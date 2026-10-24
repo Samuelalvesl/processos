@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Gerador de Contratações</title>
+<meta name="description" content="Gera DFD, ETP e Termo de Referência para dispensa eletrônica, pregão eletrônico e adesão a ata, pela Lei nº 14.133/2021.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Carlito:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="css/app.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="js/config.js"></script>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Gerador de Contratações</h1>
+      <p>Preencha os dados essenciais da demanda e receba o DFD, o ETP e o Termo de Referência prontos para revisão, com as referências legais ajustadas à modalidade.</p>
+      <div class="law">Lei nº 14.133/2021 · IN SEGES 58/2022 · 65/2021 · 67/2021 · 73/2022 · Decreto 11.462/2023</div>
+    </div>
+    <div class="cloud" id="cloud"></div>
+  </header>
+
+  <div class="layout">
+    <form class="col-form" id="form" autocomplete="off">
+      <section class="panel" id="pnlProcessos" hidden></section>
+
+      <div class="banner" id="exampleBanner" hidden>
+        <span>Exemplo preenchido para demonstração. Os valores e itens não são de um processo real.</span>
+        <button type="button" class="link" id="btnClear">Começar um processo em branco</button>
+      </div>
+
+      <section class="panel">
+        <h2>1 · Modalidade</h2>
+        <div class="mods" role="radiogroup" aria-label="Modalidade">
+          <label class="mod"><input type="radio" name="mod" id="mod-dispensa" value="dispensa"><b>Dispensa eletrônica</b><span>art. 75, II · IN 67/2021</span></label>
+          <label class="mod"><input type="radio" name="mod" id="mod-pregao" value="pregao"><b>Pregão eletrônico</b><span>art. 29 · IN 73/2022</span></label>
+          <label class="mod"><input type="radio" name="mod" id="mod-adesao" value="adesao"><b>Adesão a ata</b><span>art. 86, § 2º · Dec. 11.462</span></label>
+        </div>
+
+        <div data-show="pregao" class="col-form" style="gap:10px">
+          <label class="check"><input type="checkbox" id="srp" data-k="srp"> <span>Sistema de Registro de Preços (SRP)</span></label>
+          <div class="field" data-show-if="srp"><label for="srpHipotese">Hipótese do SRP <small>(art. 3º do Decreto nº 11.462/2023)</small></label>
+            <select id="srpHipotese" data-k="srpHipotese">
+              <option value="I">I – contratações frequentes</option>
+              <option value="II">II – entregas parceladas</option>
+              <option value="III">III – atendimento a mais de um órgão</option>
+              <option value="IV">IV – quantitativo não definível previamente</option>
+            </select></div>
+          <label class="check" data-show-if="srp"><input type="checkbox" id="adesaoPermitida" data-k="adesaoPermitida"> <span>Permitir adesão à ata por não participantes</span></label>
+          <div class="row">
+            <div class="field"><label for="adjudicacao">Adjudicação</label>
+              <select id="adjudicacao" data-k="adjudicacao"><option value="item">Por item</option><option value="grupo">Por grupo</option></select></div>
+            <div class="field" data-show-if="!srp"><label for="vigenciaMeses">Vigência (meses)</label><input type="number" min="1" id="vigenciaMeses" data-k="vigenciaMeses"></div>
+          </div>
+          <div class="field" data-show-if="adjudicacao=grupo"><label for="justGrupo">Por que agrupar os itens?</label><textarea id="justGrupo" data-k="justGrupo" rows="2"></textarea></div>
+          <label class="check"><input type="checkbox" id="sigiloso" data-k="sigiloso"> <span>Orçamento sigiloso até o fim dos lances (art. 24)</span></label>
+        </div>
+
+        <div data-show="dispensa" class="row">
+          <div class="field"><label for="vigenciaDias">Vigência (dias)</label><input type="number" min="1" id="vigenciaDias" data-k="vigenciaDias"></div>
+        </div>
+
+        <div data-show="adesao" class="col-form" style="gap:10px">
+          <p class="hint">Busque a ata no Compras.gov.br para trazer os itens, os preços registrados e o saldo de adesão atualizado.</p>
+          <div class="row">
+            <div class="field"><label for="uasg">UASG gerenciadora</label><input type="text" id="uasg" data-k="uasg" inputmode="numeric" placeholder="257023"></div>
+            <div class="field"><label for="pregaoOrigem">Pregão nº/ano</label><input type="text" id="pregaoOrigem" data-k="pregaoOrigem" placeholder="90006/2025"></div>
+            <div class="field"><label for="ata">Ata nº/ano <small>(opcional)</small></label><input type="text" id="ata" data-k="ata" placeholder="00067/2025"></div>
+          </div>
+          <div class="actions">
+            <button type="button" class="primary" id="btnBuscarAta">Buscar ata e saldos</button>
+            <button type="button" id="btnAtualizarSaldo" hidden>Atualizar saldos</button>
+          </div>
+          <div class="status" id="arpStatus" aria-live="polite"></div>
+          <div id="arpResult"></div>
+          <div class="row">
+            <div class="field"><label for="gerenciador">Órgão gerenciador</label><input type="text" id="gerenciador" data-k="gerenciador"></div>
+            <div class="field"><label for="ataValidade">Ata válida até</label><input type="date" id="ataValidade" data-k="ataValidade"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label for="fornecedor">Fornecedor (razão social)</label><input type="text" id="fornecedor" data-k="fornecedor"></div>
+            <div class="field"><label for="cnpj">CNPJ</label><input type="text" id="cnpj" data-k="cnpj" placeholder="00.000.000/0001-00"></div>
+          </div>
+          <div class="field"><label for="vigenciaAdesao">Vigência do contrato</label><input type="text" id="vigenciaAdesao" data-k="vigenciaAdesao" placeholder="90 (noventa) dias"></div>
+          <div class="field"><label for="vantagem">Por que aderir em vez de licitar?</label>
+            <select id="vantagem" data-k="vantagem">
+              <option value="prazo">Ganho de prazo para atender a demanda</option>
+              <option value="economia">Economia processual e de recursos</option>
+              <option value="desabastecimento">Risco de desabastecimento ou descontinuidade</option>
+            </select></div>
+          <label class="check"><input type="checkbox" id="ataFederal" data-k="ataFederal"> <span>A ata é de órgão ou entidade da Administração Pública federal</span></label>
+          <label class="check"><input type="checkbox" id="habReduzida" data-k="habReduzida"> <span>Usar habilitação simplificada no TR (verificada no certame de origem)</span></label>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>2 · A demanda</h2>
+        <div class="row">
+          <div class="field"><label for="nup">NUP do processo</label><input type="text" id="nup" data-k="nup" placeholder="63141.000000/2026-00"></div>
+          <div class="field"><label for="prioridade">Prioridade</label>
+            <select id="prioridade" data-k="prioridade"><option>Baixo</option><option>Médio</option><option>Alto</option></select></div>
+          <div class="field"><label for="dataPretendida">Concluir até</label><input type="month" id="dataPretendida" data-k="dataPretendida"></div>
+        </div>
+        <div class="field"><label for="objeto">Objeto <small>(comece por “aquisição de…”)</small></label><textarea id="objeto" data-k="objeto" rows="2"></textarea></div>
+        <div class="field"><label for="motivo">Motivo, em uma frase <small>(completa “visando…”)</small></label><input type="text" id="motivo" data-k="motivo"></div>
+        <div class="field"><label for="necessidade">Razão da necessidade <small>(problema, finalidade, impacto de não contratar)</small></label><textarea id="necessidade" data-k="necessidade" rows="3"></textarea></div>
+        <div class="field"><label for="baseQtd">Como as quantidades foram definidas</label><textarea id="baseQtd" data-k="baseQtd" rows="2"></textarea></div>
+        <div class="field"><label for="pca">Plano de Contratações Anual <small>(nº do item no PCA, se houver)</small></label><input type="text" id="pca" data-k="pca"></div>
+      </section>
+
+      <section class="panel">
+        <h2>3 · Itens</h2>
+        <p class="hint">Use a descrição e o código do CATMAT. Os totais são calculados automaticamente.</p>
+        <p class="hint" data-show="adesao">Na adesão, informe o número de cada item conforme a ata: ele é usado nos documentos e, com a UASG e a ata preenchidas acima, o saldo do item é consultado ao sair do campo.</p>
+        <div class="items" id="items"></div>
+        <button type="button" id="btnAddItem">+ Adicionar item</button>
+        <div class="total"><span>Valor total estimado</span><strong id="totalVal">R$ 0,00</strong></div>
+      </section>
+
+      <section class="panel">
+        <h2>4 · Entrega</h2>
+        <div class="row">
+          <div class="field"><label for="prazoEntrega">Prazo de entrega (dias)</label><input type="number" min="1" id="prazoEntrega" data-k="prazoEntrega"></div>
+          <div class="field"><label for="fornecimento">Fornecimento</label>
+            <select id="fornecimento" data-k="fornecimento"><option value="integral">Integral</option><option value="parcelado">Parcelado</option></select></div>
+        </div>
+        <label class="check"><input type="checkbox" id="perecivel" data-k="perecivel"> <span>Exigir validade mínima no recebimento</span></label>
+        <div class="field" data-show-if="perecivel"><label for="validadeMeses">Validade mínima (meses)</label><input type="number" min="1" id="validadeMeses" data-k="validadeMeses"></div>
+        <div class="field"><label for="requisitos">Requisitos específicos <small>(opcional: qualidade, embalagem, transporte)</small></label><textarea id="requisitos" data-k="requisitos" rows="2"></textarea></div>
+      </section>
+
+      <details class="panel" id="pnlResp">
+        <summary>5 · Responsáveis</summary>
+        <p class="hint">Valores do último processo. Confirme a cada nova demanda: os titulares das funções mudam.</p>
+        <div class="row">
+          <div class="field"><label for="o-reqNome">Requisitante</label><input type="text" id="o-reqNome" data-k="org.reqNome"></div>
+          <div class="field"><label for="o-reqPosto">Posto/cargo</label><input type="text" id="o-reqPosto" data-k="org.reqPosto"></div>
+        </div>
+        <div class="field"><label for="o-reqFuncao">Função do requisitante</label><input type="text" id="o-reqFuncao" data-k="org.reqFuncao"></div>
+        <div class="row">
+          <div class="field"><label for="o-ordNome">Ordenador de Despesas</label><input type="text" id="o-ordNome" data-k="org.ordNome"></div>
+          <div class="field"><label for="o-ordPosto">Posto</label><input type="text" id="o-ordPosto" data-k="org.ordPosto"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-eq1">Equipe de planejamento 1</label><input type="text" id="o-eq1" data-k="org.eq1"></div>
+          <div class="field"><label for="o-eq1mail">E-mail</label><input type="text" id="o-eq1mail" data-k="org.eq1mail"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-eq2">Equipe de planejamento 2</label><input type="text" id="o-eq2" data-k="org.eq2"></div>
+          <div class="field"><label for="o-eq2mail">E-mail</label><input type="text" id="o-eq2mail" data-k="org.eq2mail"></div>
+        </div>
+      </details>
+
+      <details class="panel" id="pnlOrg">
+        <summary>6 · Dados do órgão</summary>
+        <p class="hint">Ficam salvos neste navegador e, com login, na sua conta. Valem para todos os processos.</p>
+        <div class="row">
+          <div class="field"><label for="o-forca">Linha 1 do cabeçalho</label><input type="text" id="o-forca" data-k="org.forca"></div>
+          <div class="field"><label for="o-om">Linha 2</label><input type="text" id="o-om" data-k="org.om"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-depto">Linha 3</label><input type="text" id="o-depto" data-k="org.depto"></div>
+          <div class="field"><label for="o-div">Linha 4</label><input type="text" id="o-div" data-k="org.divisao"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-omArt">Órgão, com artigo</label><input type="text" id="o-omArt" data-k="org.omArtigo" placeholder="do Colégio Naval"></div>
+          <div class="field"><label for="o-setorArt">Setor requisitante, com artigo</label><input type="text" id="o-setorArt" data-k="org.setorArtigo" placeholder="da Divisão de Municiamento"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-uasg">UASG do órgão <small>(desconta adesões anteriores)</small></label><input type="text" id="o-uasg" data-k="org.uasgPropria" inputmode="numeric"></div>
+          <div class="field"><label for="o-cidade">Cidade – UF</label><input type="text" id="o-cidade" data-k="org.cidade"></div>
+          <div class="field"><label for="o-tel">Telefone</label><input type="text" id="o-tel" data-k="org.telefone"></div>
+        </div>
+        <div class="field"><label for="o-end">Endereço de entrega</label><input type="text" id="o-end" data-k="org.endereco"></div>
+        <div class="field"><label for="o-hor">Horário de recebimento</label><input type="text" id="o-hor" data-k="org.horario"></div>
+        <span class="lbl">Dotação orçamentária <small class="hint">(confirme a cada exercício)</small></span>
+        <div class="row">
+          <div class="field"><label for="o-ug">Gestão/UG</label><input type="text" id="o-ug" data-k="org.ug"></div>
+          <div class="field"><label for="o-fonte">Fonte</label><input type="text" id="o-fonte" data-k="org.fonte"></div>
+          <div class="field"><label for="o-ptres">Programa de trabalho</label><input type="text" id="o-ptres" data-k="org.ptres"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label for="o-nd">Elemento de despesa</label><input type="text" id="o-nd" data-k="org.nd"></div>
+          <div class="field"><label for="o-pi">Plano interno</label><input type="text" id="o-pi" data-k="org.pi"></div>
+        </div>
+        <label class="check"><input type="checkbox" id="o-anexos" data-k="org.anexos"> <span>Indicar anexo no topo (TR = I, ETP = II, DFD = III)</span></label>
+        <button type="button" class="link" id="btnResetOrg" style="align-self:flex-start">Restaurar dados padrão do Colégio Naval</button>
+      </details>
+    </form>
+
+    <section class="col-doc" aria-label="Documentos gerados">
+      <div class="alerts" id="alerts" aria-live="polite"></div>
+      <div class="toolbar">
+        <div class="tabs" role="tablist" id="tabs">
+          <button type="button" class="tab" role="tab" data-doc="dfd" id="tab-dfd">DFD <span class="pend"></span></button>
+          <button type="button" class="tab" role="tab" data-doc="etp" id="tab-etp">ETP <span class="pend"></span></button>
+          <button type="button" class="tab" role="tab" data-doc="tr" id="tab-tr">TR <span class="pend"></span></button>
+          <button type="button" class="tab" role="tab" data-doc="check" id="tab-check">Próximos passos</button>
+        </div>
+        <div class="actions">
+          <button type="button" id="btnCopy">Copiar texto</button>
+          <button type="button" id="btnDocx">Baixar .docx</button>
+          <button type="button" class="primary" id="btnZip">Baixar os três (.zip)</button>
+        </div>
+      </div>
+      <div class="status" id="status">Os trechos em amarelo ainda precisam ser preenchidos.</div>
+      <div class="sheet"><div id="view"></div></div>
+    </section>
+  </div>
+</div>
+<script src="js/app.js"></script>
+<script src="js/arp.js"></script>
+<script type="module" src="js/nuvem.js"></script>
+</body>
+</html>
