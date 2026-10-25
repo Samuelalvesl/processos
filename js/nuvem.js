@@ -24,11 +24,24 @@ if (!cfg || !cfg.apiKey) {
   function desenharBarra() {
     box.innerHTML = user
       ? `<span class="who">${esc(user.displayName || user.email || "Conectado")}</span>
+         <button type="button" id="btnNovo">Novo processo</button>
          <button type="button" id="btnSalvarNuvem" class="primary">Salvar processo</button>
+         <button type="button" id="btnSalvarCopia" hidden>Salvar como novo</button>
          <button type="button" id="btnMeus">Meus processos</button>
-         <button type="button" id="btnSair" class="link">Sair</button>`
+         <button type="button" id="btnSair" class="link">Sair</button>
+         <span class="hint" id="procAtual"></span>`
       : `<button type="button" id="btnEntrar">Entrar com Google</button><span class="hint">para salvar processos na nuvem</span>`;
+    mostrarAtual(App.state());
   }
+
+  // Indica se "Salvar processo" vai atualizar um processo existente ou criar um novo.
+  function mostrarAtual(S) {
+    const el = $("#procAtual");
+    if (!el) return;
+    el.textContent = S.cloudId ? `Editando processo salvo: ${(S.objeto || "sem objeto").slice(0, 60)}` : "Processo novo, ainda não salvo";
+    $("#btnSalvarCopia").hidden = !S.cloudId;
+  }
+  App.listeners.push(mostrarAtual);
 
   async function listar() {
     const pnl = $("#pnlProcessos");
@@ -43,17 +56,18 @@ if (!cfg || !cfg.apiKey) {
     }).join("")}</ul>`}<button type="button" class="link" id="btnFecharLista">Fechar</button>`;
   }
 
-  async function salvar() {
+  async function salvar(comoNovo) {
     const S = App.getState();
     const { org, ...estado } = S;
-    const ref = estado.cloudId ? doc(procCol(), estado.cloudId) : doc(procCol());
+    const ref = estado.cloudId && !comoNovo ? doc(procCol(), estado.cloudId) : doc(procCol());
     estado.cloudId = ref.id;
     await setDoc(ref, {
       titulo: (S.objeto || "").slice(0, 140), modalidade: S.mod, nup: S.nup || "",
       estado: JSON.stringify(estado), atualizadoEm: serverTimestamp()
     });
     App.state().cloudId = ref.id;
-    status(`Processo salvo na nuvem em ${new Date().toLocaleString("pt-BR")}.`);
+    mostrarAtual(App.state());
+    status(`${comoNovo || !S.cloudId ? "Novo processo salvo" : "Processo atualizado"} na nuvem em ${new Date().toLocaleString("pt-BR")}.`);
   }
 
   async function abrir(id) {
@@ -86,7 +100,9 @@ if (!cfg || !cfg.apiKey) {
     try {
       if (id === "btnEntrar") await signInWithPopup(auth, new GoogleAuthProvider());
       if (id === "btnSair") { await signOut(auth); $("#pnlProcessos").hidden = true; }
-      if (id === "btnSalvarNuvem") await salvar();
+      if (id === "btnNovo") { App.novo(); $("#pnlProcessos").hidden = true; }
+      if (id === "btnSalvarNuvem") await salvar(false);
+      if (id === "btnSalvarCopia") await salvar(true);
       if (id === "btnMeus") await listar();
     } catch (err) { status("Não foi possível concluir: " + (err.code || err.message)); }
   });
