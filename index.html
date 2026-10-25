@@ -105,7 +105,9 @@
         <div class="field"><label for="motivo">Motivo, em uma frase <small>(completa “visando…”)</small></label><input type="text" id="motivo" data-k="motivo"></div>
         <div class="field"><label for="necessidade">Razão da necessidade <small>(problema, finalidade, impacto de não contratar)</small></label><textarea id="necessidade" data-k="necessidade" rows="3"></textarea></div>
         <div class="field"><label for="baseQtd">Como as quantidades foram definidas</label><textarea id="baseQtd" data-k="baseQtd" rows="2"></textarea></div>
-        <div class="field"><label for="pca">Plano de Contratações Anual <small>(nº do item no PCA, se houver)</small></label><input type="text" id="pca" data-k="pca"></div>
+        <label class="check"><input type="checkbox" id="pcaNaoConsta" data-k="pcaNaoConsta"> <span>A demanda não consta do Plano de Contratações Anual</span></label>
+        <div class="field" data-show-if="!pcaNaoConsta"><label for="pca">Plano de Contratações Anual <small>(nº do item no PCA)</small></label><input type="text" id="pca" data-k="pca"></div>
+        <div class="field" data-show-if="pcaNaoConsta"><label for="pcaJustificativa">Justificativa da não previsão no PCA <small>(entra no ETP como escrita)</small></label><textarea id="pcaJustificativa" data-k="pcaJustificativa" rows="3"></textarea></div>
       </section>
 
       <section class="panel">
