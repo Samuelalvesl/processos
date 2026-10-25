@@ -19,7 +19,7 @@ const BLANK = {
   mod: "dispensa", srp: false, srpHipotese: "I", adesaoPermitida: false, adjudicacao: "item", justGrupo: "", sigiloso: false,
   vigenciaMeses: 12, vigenciaDias: 90,
   ata: "", pregaoOrigem: "", gerenciador: "", uasg: "", fornecedor: "", cnpj: "", ataValidade: "", ataProrrogada: false, aditivoNum: "", ataNovaValidade: "", vigenciaAdesao: "", vantagem: "prazo", ataFederal: false, habReduzida: true,
-  nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "",
+  nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "", pcaNaoConsta: false, pcaJustificativa: "",
   itens: [{ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }],
   prazoEntrega: 5, fornecimento: "integral", perecivel: false, validadeMeses: 12, requisitos: "",
   fornecedores: [], cloudId: null,
@@ -245,7 +245,9 @@ function buildETP(calc, M) {
     ...sec("VI – ESTIMATIVA DE PREÇOS OU PREÇOS REFERENCIAIS", `${M.etp_precos} O valor total estimado é de ${tot}.`),
     ...sec("VII – JUSTIFICATIVA PARA O PARCELAMENTO (OU NÃO) DA SOLUÇÃO", parcel),
     ...sec("VIII – CONTRATAÇÕES CORRELATAS E/OU INTERDEPENDENTES", "Não foram identificadas contratações correlatas ou interdependentes necessárias à viabilidade desta demanda."),
-    ...sec("IX – ALINHAMENTO AO PLANO DE CONTRATAÇÕES ANUAL", S.pca.trim()
+    ...sec("IX – ALINHAMENTO AO PLANO DE CONTRATAÇÕES ANUAL", S.pcaNaoConsta
+        ? ((S.pcaJustificativa || "").trim() || "[PREENCHER: justificativa da não previsão da demanda no PCA]")
+        : S.pca.trim()
         ? `A demanda está prevista no Plano de Contratações Anual de ${(S.dataPretendida || "").slice(0, 4) || "[PREENCHER: ano]"}, item nº ${S.pca.trim()}.`
         : "[PREENCHER: a demanda consta do PCA do exercício, item nº ..., ou justificativa da não previsão]"),
     ...sec("X – RESULTADOS PRETENDIDOS", `Pretende-se ${ph(S.motivo, "resultado pretendido")}, com economicidade e melhor aproveitamento dos recursos humanos, materiais e financeiros disponíveis.`),
@@ -263,6 +265,9 @@ function buildETP(calc, M) {
     { t: "h", text: "Equipe de Planejamento e Fiscalização" },
     { t: "table", head: ["Nome", "Telefone", "E-mail", "Membro da Equipe de Fiscalização"], w: [32, 18, 32, 18],
       rows: [[ph(o.eq1, "nome"), o.telefone || "", mail(o.eq1mail), "SIM"], [ph(o.eq2, "nome"), o.telefone || "", mail(o.eq2mail), "SIM"]] },
+    { t: "signs", rot: "Elaborado por:", items: [
+      assinatura(null, o.eq1, "", "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 1"),
+      assinatura(null, o.eq2, "", "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 2")] },
     assinatura("Aprovado por:", o.ordNome, o.ordPosto, "Ordenador de Despesa", "NOME DO ORDENADOR DE DESPESAS")
   ];
 }
@@ -558,6 +563,7 @@ function toHTML(blocks) {
       case "list": return `<ul>${b.items.map(i => `<li>${inl(i)}</li>`).join("")}</ul>`;
       case "local": return `<p class="d-local">${inl(b.text)}</p>`;
       case "sign": return `<div class="d-sign">${b.rot ? `<p class="rot">${inl(b.rot)}</p>` : ""}<div class="nm">${inl(b.nome)}</div>${b.linhas.map(l => `<div>${inl(l)}</div>`).join("")}</div>`;
+      case "signs": return `<div class="d-signs">${b.rot ? `<p class="rot">${inl(b.rot)}</p>` : ""}<div class="lado">${toHTML(b.items)}</div></div>`;
       case "foot": return `<p class="d-foot">${inl(b.text)}</p>`;
     }
     return "";
@@ -566,6 +572,7 @@ function toHTML(blocks) {
 
 /* ---------- geração DOCX (WordprocessingML) ---------- */
 const TEXT_W = 9071; // A4 com margens de 3 cm (esq.) e 2 cm (dir.), em twips
+const ESPACO_ASSINATURA = 1985; // 3,5 cm acima do nome, para o carimbo da assinatura gov.br
 const xe = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 function wr(text, o = {}) {
   return segs(text).map(s => {
@@ -583,6 +590,14 @@ function wtable(b) {
   return `<w:tbl><w:tblPr><w:tblW w:w="${TEXT_W}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:left w:w="80" w:type="dxa"/><w:right w:w="80" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid>${cols.map(c => `<w:gridCol w:w="${c}"/>`).join("")}</w:tblGrid>`
     + `<w:tr><w:trPr><w:tblHeader/></w:trPr>${b.head.map((h, i) => cell(h, i, true)).join("")}</w:tr>`
     + b.rows.map(r => `<w:tr><w:trPr><w:cantSplit/></w:trPr>${r.map((c, i) => cell(c, i, false)).join("")}</w:tr>`).join("") + `</w:tbl>` + wp("", { after: 60 });
+}
+// Assinaturas lado a lado: tabela sem bordas, uma coluna por assinante
+function wsigns(items) {
+  const w = Math.floor(TEXT_W / items.length);
+  const cell = s => `<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/></w:tcPr>${wp(wr(s.nome, { b: true, caps: true }), { jc: "center", after: 0 })}${s.linhas.map(l => wp(wr(l), { jc: "center", after: 0 })).join("")}</w:tc>`;
+  const bd = ["top", "left", "bottom", "right", "insideH", "insideV"].map(s => `<w:${s} w:val="nil"/>`).join("");
+  return `<w:tbl><w:tblPr><w:tblW w:w="${TEXT_W}" w:type="dxa"/><w:tblBorders>${bd}</w:tblBorders><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${items.map(() => `<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`
+    + `<w:tr><w:trPr><w:cantSplit/></w:trPr>${items.map(cell).join("")}</w:tr></w:tbl>` + wp("", { after: 60 });
 }
 function brasaoXML() {
   if (!brasaoBytes) return "";
@@ -604,8 +619,9 @@ function toDocXML(blocks) {
       case "table": return wtable(b);
       case "list": return b.items.map(i => wp(`<w:r><w:t xml:space="preserve">•  </w:t></w:r>` + wr(i), { ind: '<w:ind w:left="709" w:hanging="284"/>', after: 40, jc: "left" })).join("");
       case "local": return wp(wr(b.text), { jc: "right", before: 360, after: 240 });
-      case "sign": return (b.rot ? wp(wr(b.rot), { jc: "left", before: 360, after: 600, keep: true }) : wp("", { before: 480, after: 0, keep: true }))
+      case "sign": return (b.rot ? wp(wr(b.rot), { jc: "left", before: 360, after: ESPACO_ASSINATURA, keep: true }) : wp("", { before: ESPACO_ASSINATURA, after: 0, keep: true }))
         + wp(wr(b.nome, { b: true, caps: true }), { jc: "center", after: 0, keep: true }) + b.linhas.map((l, i) => wp(wr(l), { jc: "center", after: 0, keep: i < b.linhas.length - 1 })).join("");
+      case "signs": return wp(b.rot ? wr(b.rot) : "", { jc: "left", before: 360, after: ESPACO_ASSINATURA, keep: true }) + wsigns(b.items);
       case "foot": return wp(wr(b.text, { sz: 16 }), { jc: "center", before: 480 });
     }
     return "";
