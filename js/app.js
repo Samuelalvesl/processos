@@ -732,6 +732,7 @@ const App = window.App = {
   setState(ns) { S = Object.assign(clone(BLANK), ns, { org: S.org }); fillForm(); render(); },
   setOrg(o) { S.org = Object.assign(clone(DEFAULT_ORG), o); fillForm(); render(); },
   refresh() { fillForm(); render(); },
+  novo: () => novoProcesso(),
   status: t => setStatus(t),
   brl, num, fmtQtd, esc
 };
@@ -749,7 +750,9 @@ $("#form").addEventListener("input", e => {
 $("#form").addEventListener("submit", e => e.preventDefault());
 $("#items").addEventListener("click", e => { const d = e.target.closest("[data-del]"); if (!d) return; S.itens.splice(+d.dataset.del, 1); renderItems(); render(); });
 $("#btnAddItem").addEventListener("click", () => { S.itens.push({ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }); renderItems(); render(); $(`#it-${S.itens.length - 1}-desc`).focus(); });
-$("#btnClear").addEventListener("click", () => { const org = S.org; S = Object.assign(clone(BLANK), { org }); fillForm(); render(); $("#objeto").focus(); setStatus("Formulário limpo. Os dados do órgão foram mantidos."); });
+// Formulário em branco, sem vínculo com processo salvo (o próximo "Salvar" cria um processo novo).
+function novoProcesso() { const org = S.org; S = Object.assign(clone(BLANK), { org }); fillForm(); render(); $("#objeto").focus(); setStatus("Formulário limpo para um novo processo. Os dados do órgão foram mantidos."); }
+$("#btnClear").addEventListener("click", novoProcesso);
 $("#btnResetOrg").addEventListener("click", () => { S.org = clone(DEFAULT_ORG); fillForm(); render(); setStatus("Dados do órgão restaurados."); });
 $("#tabs").addEventListener("click", e => { const t = e.target.closest(".tab"); if (!t) return; currentDoc = t.dataset.doc; render(); });
 
