@@ -70,7 +70,12 @@
           </div>
           <div class="row">
             <div class="field"><label for="gerenciador">Órgão gerenciador</label><input type="text" id="gerenciador" data-k="gerenciador"></div>
-            <div class="field"><label for="ataValidade">Ata válida até</label><input type="date" id="ataValidade" data-k="ataValidade"></div>
+            <div class="field"><label for="ataValidade">Ata válida até <small>(vigência original)</small></label><input type="date" id="ataValidade" data-k="ataValidade"></div>
+          </div>
+          <label class="check"><input type="checkbox" id="ataProrrogada" data-k="ataProrrogada"> <span>A ata foi prorrogada por termo aditivo (art. 84)</span></label>
+          <div class="row" data-show-if="ataProrrogada">
+            <div class="field"><label for="aditivoNum">Termo aditivo nº/ano</label><input type="text" id="aditivoNum" data-k="aditivoNum" placeholder="1/2026"></div>
+            <div class="field"><label for="ataNovaValidade">Nova validade da ata</label><input type="date" id="ataNovaValidade" data-k="ataNovaValidade"></div>
           </div>
           <div class="row">
             <div class="field"><label for="fornecedor">Fornecedor (razão social)</label><input type="text" id="fornecedor" data-k="fornecedor"></div>

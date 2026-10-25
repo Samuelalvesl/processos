@@ -18,7 +18,7 @@ const DEFAULT_ORG = {
 const BLANK = {
   mod: "dispensa", srp: false, srpHipotese: "I", adesaoPermitida: false, adjudicacao: "item", justGrupo: "", sigiloso: false,
   vigenciaMeses: 12, vigenciaDias: 90,
-  ata: "", pregaoOrigem: "", gerenciador: "", uasg: "", fornecedor: "", cnpj: "", ataValidade: "", vigenciaAdesao: "", vantagem: "prazo", ataFederal: false, habReduzida: true,
+  ata: "", pregaoOrigem: "", gerenciador: "", uasg: "", fornecedor: "", cnpj: "", ataValidade: "", ataProrrogada: false, aditivoNum: "", ataNovaValidade: "", vigenciaAdesao: "", vantagem: "prazo", ataFederal: false, habReduzida: true,
   nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "",
   itens: [{ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }],
   prazoEntrega: 5, fornecimento: "integral", perecivel: false, validadeMeses: 12, requisitos: "",
@@ -56,6 +56,8 @@ const ph = (v, label) => { const s = (v ?? "").toString().trim(); return s || `[
 const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
 function mesAno(v) { if (!v) return ""; const [y, m] = v.split("-"); return `${MESES[+m - 1]} de ${y}`; }
 function dataBR(v) { if (!v) return ""; const [y, m, d] = v.split("-"); return `${d}/${m}/${y}`; }
+// Validade que vale para a adesão: a nova data, quando a ata foi prorrogada por termo aditivo (art. 84).
+const validadeAta = () => (S.ataProrrogada && S.ataNovaValidade) || S.ataValidade;
 
 const UN = ["","um","dois","três","quatro","cinco","seis","sete","oito","nove","dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"];
 const DZ = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"];
@@ -153,7 +155,7 @@ function modTexts(calc) {
     etp_modalidade: `adesão, como órgão não participante, à Ata de Registro de Preços nº ${ata}, gerenciada pelo(a) ${ger} (UASG ${uasg}), nos termos do art. 86, § 2º, da Lei nº 14.133/2021`,
     etp_precos: "Em conformidade com o art. 86, § 2º, II, da Lei nº 14.133/2021 e com a IN SEGES/ME nº 65/2021, foi realizada pesquisa de preços que demonstra que os valores registrados na ata são compatíveis com os valores praticados pelo mercado, conforme mapa comparativo anexo.",
     etp_mercado: `Foram avaliadas as alternativas de realizar licitação própria e de aderir à ata vigente. A adesão mostra-se mais vantajosa porque ${VANT[S.vantagem] || VANT.prazo} (art. 86, § 2º, I, da Lei nº 14.133/2021), e os preços registrados estão compatíveis com o mercado. Os quantitativos solicitados respeitam os limites dos §§ 4º e 5º do art. 86 da Lei nº 14.133/2021.`,
-    tr_vigencia: `O prazo de vigência da contratação é de ${ph(S.vigenciaAdesao, "90 (noventa) dias / 12 meses")}, contados da assinatura do contrato ou instrumento equivalente, observada a vigência da Ata de Registro de Preços nº ${ata}, válida até ${ph(dataBR(S.ataValidade), "data")}.`,
+    tr_vigencia: `O prazo de vigência da contratação é de ${ph(S.vigenciaAdesao, "90 (noventa) dias / 12 meses")}, contados da assinatura do contrato ou instrumento equivalente, observada a vigência da Ata de Registro de Preços nº ${ata}, válida até ${ph(dataBR(validadeAta()), "data")}${S.ataProrrogada ? `, conforme prorrogação formalizada pelo Termo Aditivo nº ${ph(S.aditivoNum, "nº/ano do termo aditivo")}, nos termos do art. 84 da Lei nº 14.133/2021` : ""}.`,
     tr_solucao: `A adesão à Ata de Registro de Preços nº ${ata} mostra-se a solução mais adequada, considerado o ciclo de vida do objeto, por permitir o atendimento tempestivo da demanda a preços compatíveis com os de mercado, conforme demonstrado no Estudo Técnico Preliminar.`,
     tr_selecao: `O fornecimento será realizado mediante **adesão à Ata de Registro de Preços nº ${ata}**, decorrente do **Pregão Eletrônico nº ${preg}**, gerenciada pelo(a) **${ger} (UASG ${uasg})**, firmada ${contratadas}, com fundamento no art. 86, § 2º, da Lei nº 14.133/2021 e no Decreto nº 11.462/2023, condicionada à anuência do órgão gerenciador e ao aceite do fornecedor.`,
     tr_aceitabilidade: "Os preços unitários são os registrados na ata, conforme tabela do item 1.1 deste Termo de Referência."
@@ -475,9 +477,17 @@ function buildAlerts(calc) {
   }
   if (S.mod === "adesao") {
     if (!S.ataFederal) a.push(["err", "Confirme que a ata é de órgão federal: a adesão a ata estadual, distrital ou municipal não é permitida a órgão federal (art. 86, § 8º)."]);
-    if (S.ataValidade) {
-      const hoje = new Date().toISOString().slice(0, 10);
-      if (S.ataValidade < hoje) a.push(["err", `A ata venceu em ${dataBR(S.ataValidade)}. A adesão só é possível com ata vigente.`]);
+    const hoje = new Date().toISOString().slice(0, 10), val = validadeAta();
+    if (S.ataProrrogada && !S.ataNovaValidade) a.push(["warn", "Informe a nova validade da ata prorrogada pelo termo aditivo."]);
+    if (S.ataProrrogada && !String(S.aditivoNum || "").trim()) a.push(["warn", "Informe o número do termo aditivo de prorrogação da ata."]);
+    if (val && val < hoje) a.push(["err", S.ataProrrogada && S.ataNovaValidade
+      ? `A ata prorrogada venceu em ${dataBR(val)}. A adesão só é possível com ata vigente.`
+      : `A ata venceu em ${dataBR(val)}. A adesão só é possível com ata vigente. Se houve prorrogação, marque "A ata foi prorrogada por termo aditivo" e informe a nova validade.`]);
+    if (S.ataProrrogada && S.ataValidade && S.ataNovaValidade) {
+      const [y, m, d] = S.ataValidade.split("-");
+      const limite = `${+y + 1}-${m}-${d}`;
+      if (S.ataNovaValidade <= S.ataValidade) a.push(["warn", "A nova validade deve ser posterior à vigência original da ata."]);
+      else if (S.ataNovaValidade > limite) a.push(["warn", `A prorrogação passa de 1 ano além da vigência original (até ${dataBR(limite)}). O art. 84 admite prorrogação por igual período; confira o termo aditivo.`]);
     }
     calc.rows.forEach(r => {
       const reg = num(r.qreg);
