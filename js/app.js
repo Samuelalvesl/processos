@@ -11,7 +11,7 @@ const DEFAULT_ORG = {
   ug: "762300", fonte: "1000000000", ptres: "174713", nd: "339030", pi: "B44101002DD",
   reqNome: "Luiz Gustavo de Nonno", reqPosto: "1ºTen (T)", reqFuncao: "Encarregado da Divisão de Municiamento",
   ordNome: "José Fernando Barboza dos Santos", ordPosto: "CMG",
-  eq1: "Luiz Gustavo de Nonno", eq1mail: "", eq2: "Manoel Ricardo dos Santos Filho", eq2mail: "",
+  eq1: "Luiz Gustavo de Nonno", eq1Posto: "", eq1mail: "", eq2: "Manoel Ricardo dos Santos Filho", eq2Posto: "", eq2mail: "",
   anexos: true
 };
 
@@ -266,8 +266,8 @@ function buildETP(calc, M) {
     { t: "table", head: ["Nome", "Telefone", "E-mail", "Membro da Equipe de Fiscalização"], w: [32, 18, 32, 18],
       rows: [[ph(o.eq1, "nome"), o.telefone || "", mail(o.eq1mail), "SIM"], [ph(o.eq2, "nome"), o.telefone || "", mail(o.eq2mail), "SIM"]] },
     { t: "signs", rot: "Elaborado por:", items: [
-      assinatura(null, o.eq1, "", "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 1"),
-      assinatura(null, o.eq2, "", "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 2")] },
+      assinatura(null, o.eq1, o.eq1Posto, "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 1"),
+      assinatura(null, o.eq2, o.eq2Posto, "Equipe de Planejamento da Contratação", "NOME DO INTEGRANTE DA EQUIPE 2")] },
     assinatura("Aprovado por:", o.ordNome, o.ordPosto, "Ordenador de Despesa", "NOME DO ORDENADOR DE DESPESAS")
   ];
 }
