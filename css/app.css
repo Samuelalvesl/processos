@@ -60,7 +60,6 @@ input:focus,select:focus,textarea:focus{outline:2px solid var(--accent);outline-
 .itemhead b{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
 .itemgrid{display:grid;grid-template-columns:1.1fr .8fr .7fr 1fr;gap:8px}
 .itemgrid.ades{grid-template-columns:.7fr 1.1fr .8fr .7fr 1fr .9fr}
-.itemcard .link{background:none;border:0;padding:4px 0;color:var(--accent,#1a4f8b);text-decoration:underline;cursor:pointer;font-size:12.5px}
 @media (max-width:460px){.itemgrid,.itemgrid.ades{grid-template-columns:1fr 1fr}}
 .itemgrid label{font-size:11.5px;color:var(--muted);font-family:var(--f-label)}
 .subtotal{font-family:var(--f-mono);font-size:12.5px;text-align:right;color:var(--muted)}
@@ -130,20 +129,6 @@ button.icon{padding:2px 8px;font-size:12px;color:var(--muted)}
 body{margin:0}
 .cloud{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:flex-end}
 .cloud .who{font-family:var(--f-label);font-weight:600}
-.saldo{font-size:12.5px;background:var(--ok-soft);color:var(--ok);border-radius:6px;padding:5px 8px}
-.saldo.zero{background:var(--err-soft);color:var(--err)}
-.atas{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
-.ataopt{display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:left}
-.ataopt span{font-size:12px;color:var(--muted)}
-.arpwrap{overflow-x:auto;border:1px solid var(--line);border-radius:8px}
-.arptab{border-collapse:collapse;width:100%;font-size:12.5px}
-.arptab th,.arptab td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left}
-.arptab th{font-family:var(--f-label);font-weight:600;background:var(--sunken);white-space:nowrap}
-.arptab td.n{font-family:var(--f-mono);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
-.arptab .desc{min-width:220px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-.arptab small{color:var(--muted)}
-.arptab tr.off{opacity:.55}
-.arptab input.q{width:80px}
 .proclist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
 .proclist li{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line)}
 .proclist li div:first-child{min-width:0;display:flex;flex-direction:column}

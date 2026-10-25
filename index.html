@@ -63,18 +63,11 @@
         </div>
 
         <div data-show="adesao" class="col-form" style="gap:10px">
-          <p class="hint">Busque a ata no Compras.gov.br para trazer os itens, os preços registrados e o saldo de adesão atualizado.</p>
           <div class="row">
             <div class="field"><label for="uasg">UASG gerenciadora</label><input type="text" id="uasg" data-k="uasg" inputmode="numeric" placeholder="257023"></div>
             <div class="field"><label for="pregaoOrigem">Pregão nº/ano</label><input type="text" id="pregaoOrigem" data-k="pregaoOrigem" placeholder="90006/2025"></div>
-            <div class="field"><label for="ata">Ata nº/ano <small>(opcional)</small></label><input type="text" id="ata" data-k="ata" placeholder="00067/2025"></div>
+            <div class="field"><label for="ata">Ata nº/ano</label><input type="text" id="ata" data-k="ata" placeholder="00067/2025"></div>
           </div>
-          <div class="actions">
-            <button type="button" class="primary" id="btnBuscarAta">Buscar ata e saldos</button>
-            <button type="button" id="btnAtualizarSaldo" hidden>Atualizar saldos</button>
-          </div>
-          <div class="status" id="arpStatus" aria-live="polite"></div>
-          <div id="arpResult"></div>
           <div class="row">
             <div class="field"><label for="gerenciador">Órgão gerenciador</label><input type="text" id="gerenciador" data-k="gerenciador"></div>
             <div class="field"><label for="ataValidade">Ata válida até</label><input type="date" id="ataValidade" data-k="ataValidade"></div>
@@ -113,7 +106,7 @@
       <section class="panel">
         <h2>3 · Itens</h2>
         <p class="hint">Use a descrição e o código do CATMAT. Os totais são calculados automaticamente.</p>
-        <p class="hint" data-show="adesao">Na adesão, informe o número de cada item conforme a ata: ele é usado nos documentos e, com a UASG e a ata preenchidas acima, o saldo do item é consultado ao sair do campo.</p>
+        <p class="hint" data-show="adesao">Na adesão, informe o número de cada item conforme a ata (ele é usado nos documentos) e a quantidade registrada, para conferir o limite de 50% (art. 86, § 4º).</p>
         <div class="items" id="items"></div>
         <button type="button" id="btnAddItem">+ Adicionar item</button>
         <div class="total"><span>Valor total estimado</span><strong id="totalVal">R$ 0,00</strong></div>
@@ -169,7 +162,6 @@
           <div class="field"><label for="o-setorArt">Setor requisitante, com artigo</label><input type="text" id="o-setorArt" data-k="org.setorArtigo" placeholder="da Divisão de Municiamento"></div>
         </div>
         <div class="row">
-          <div class="field"><label for="o-uasg">UASG do órgão <small>(desconta adesões anteriores)</small></label><input type="text" id="o-uasg" data-k="org.uasgPropria" inputmode="numeric"></div>
           <div class="field"><label for="o-cidade">Cidade – UF</label><input type="text" id="o-cidade" data-k="org.cidade"></div>
           <div class="field"><label for="o-tel">Telefone</label><input type="text" id="o-tel" data-k="org.telefone"></div>
         </div>
@@ -211,7 +203,6 @@
   </div>
 </div>
 <script src="js/app.js"></script>
-<script src="js/arp.js"></script>
 <script type="module" src="js/nuvem.js"></script>
 </body>
 </html>

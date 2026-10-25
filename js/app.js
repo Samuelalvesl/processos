@@ -12,7 +12,6 @@ const DEFAULT_ORG = {
   reqNome: "Luiz Gustavo de Nonno", reqPosto: "1ºTen (T)", reqFuncao: "Encarregado da Divisão de Municiamento",
   ordNome: "José Fernando Barboza dos Santos", ordPosto: "CMG",
   eq1: "Luiz Gustavo de Nonno", eq1mail: "", eq2: "Manoel Ricardo dos Santos Filho", eq2mail: "",
-  uasgPropria: "",
   anexos: true
 };
 
@@ -23,7 +22,7 @@ const BLANK = {
   nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "",
   itens: [{ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }],
   prazoEntrega: 5, fornecimento: "integral", perecivel: false, validadeMeses: 12, requisitos: "",
-  fornecedores: [], arpRef: null, cloudId: null,
+  fornecedores: [], cloudId: null,
   example: false
 };
 
@@ -481,17 +480,10 @@ function buildAlerts(calc) {
       if (S.ataValidade < hoje) a.push(["err", `A ata venceu em ${dataBR(S.ataValidade)}. A adesão só é possível com ata vigente.`]);
     }
     calc.rows.forEach(r => {
-      const reg = num(r.qreg), s = r.arp;
-      if (s && !s.aceita) a.push(["err", `Item ${r.n}: o gerenciador não aceita adesões a este item.`]);
-      else if (s && isFinite(r.q) && r.q > s.disponivel) a.push(["err", `Item ${r.n}: pedido de ${fmtQtd(r.q)}, mas só há ${fmtQtd(s.disponivel)} disponível (saldo para adesões: ${fmtQtd(s.saldoAdesoes)}; seu limite de 50%: ${fmtQtd(s.limiteOrgao)}).`]);
-      else if (!s && isFinite(reg) && isFinite(r.q) && r.q > reg * 0.5) a.push(["err", `Item ${r.n}: ${fmtQtd(r.q)} excede 50% do quantitativo registrado (${fmtQtd(reg)}), limite do art. 86, § 4º.`]);
+      const reg = num(r.qreg);
+      if (isFinite(reg) && isFinite(r.q) && r.q > reg * 0.5) a.push(["err", `Item ${r.n}: ${fmtQtd(r.q)} excede 50% do quantitativo registrado (${fmtQtd(reg)}), limite do art. 86, § 4º.`]);
     });
-    const consultas = calc.rows.filter(r => r.arp).map(r => r.arp.consultadoEm).sort();
-    if (consultas.length) {
-      const mais = new Date(consultas[0]), horas = (Date.now() - mais) / 36e5;
-      a.push([horas > 24 ? "warn" : "ok", `Saldos consultados no Compras.gov.br em ${mais.toLocaleString("pt-BR")}.${horas > 24 ? " Atualize antes de enviar o pedido ao gerenciador." : ""}`]);
-    }
-    if (calc.rows.some(r => !r.arp && !String(r.qreg || "").trim())) a.push(["warn", "Busque a ata no Compras.gov.br ou informe a quantidade registrada de cada item para conferir o limite de 50% (art. 86, § 4º)."]);
+    if (calc.rows.some(r => !String(r.qreg || "").trim())) a.push(["warn", "Informe a quantidade registrada na ata de cada item para conferir o limite de 50% (art. 86, § 4º)."]);
   }
   if (calc.rows.some(r => !String(r.catmat || "").trim())) a.push(["warn", "Há itens sem código CATMAT. Ele é exigido na tabela do TR."]);
   if (!calc.completo) a.push(["warn", "Há itens sem quantidade ou valor unitário: os totais ficam em branco nos documentos."]);
@@ -669,8 +661,6 @@ function renderItems() {
         <div class="field"><label for="it-${i}-vu">Valor unit. (R$)</label><input type="text" inputmode="decimal" id="it-${i}-vu" data-f="vu" value="${xe(it.vu || "")}"></div>
         ${ades ? `<div class="field"><label for="it-${i}-qreg">Qtd na ata</label><input type="text" inputmode="decimal" id="it-${i}-qreg" data-f="qreg" value="${xe(it.qreg || "")}"></div>` : ""}
       </div>
-      ${it.arp ? `<div class="saldo${it.arp.aceita && it.arp.disponivel > 0 ? "" : " zero"}">Item ${esc(String(+it.arp.numeroItem || it.arp.numeroItem))} da ata · registrada ${fmtQtd(it.arp.registrada)} · saldo para adesões ${fmtQtd(it.arp.saldoAdesoes)} · <b>disponível para você ${fmtQtd(it.arp.disponivel)}</b></div>`
-        : ades && String(it.itemAta || "").trim() ? `<button type="button" class="link" data-consultar="${i}">Consultar este item no Compras.gov.br</button>` : ""}
       <div class="subtotal" id="it-${i}-sub"></div>
     </div>`).join("");
 }
@@ -708,7 +698,7 @@ function render() {
   App.listeners.forEach(f => { try { f(S); } catch (e) { console.error(e); } });
 }
 
-// Ponte para os módulos de consulta de atas (arp.js) e de nuvem (nuvem.js).
+// Ponte para o módulo de nuvem (nuvem.js).
 const App = window.App = {
   listeners: [],
   state: () => S,
