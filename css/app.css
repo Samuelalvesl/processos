@@ -112,8 +112,12 @@ button.icon{padding:2px 8px;font-size:12px;color:var(--muted)}
 .paper ul{margin:0 0 10px 2.2em;padding:0}
 .paper .d-local{text-align:right;margin:22px 0 10px}
 .paper .d-sign{margin:26px 0 0;text-align:center;break-inside:avoid}
-.paper .d-sign .rot{text-align:left;margin:0 0 30px}
-.paper .d-sign .nm{font-weight:700;text-transform:uppercase}
+.paper .d-sign .rot{text-align:left;margin:0}
+.paper .d-sign .nm{font-weight:700;text-transform:uppercase;margin-top:110px} /* espaço para o carimbo da assinatura gov.br */
+.paper .d-signs{margin:26px 0 0;break-inside:avoid}
+.paper .d-signs .rot{margin:0}
+.paper .d-signs .lado{display:flex;gap:16px}
+.paper .d-signs .lado .d-sign{flex:1;margin:0}
 .paper .d-foot{margin-top:28px;font-size:.78em;color:#555;text-align:center}
 .paper mark{background:var(--mark);color:inherit;padding:0 1px}
 .checklist{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 24px;max-width:794px;margin:0 auto}
