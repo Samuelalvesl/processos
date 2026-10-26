@@ -50,9 +50,17 @@ if (!cfg || !cfg.apiKey) {
     pnl.innerHTML = `<h2>Meus processos</h2><p class="hint">Carregando…</p>`;
     const snap = await getDocs(query(procCol(), orderBy("atualizadoEm", "desc")));
     const MOD = { dispensa: "Dispensa", pregao: "Pregão", adesao: "Adesão" };
+    // Mesma conta do total dos documentos: soma de quantidade × valor unitário dos itens preenchidos.
+    const valor = p => {
+      try {
+        const tots = (JSON.parse(p.estado || "{}").itens || []).map(it => Math.round(App.num(it.qtd) * App.num(it.vu) * 100) / 100).filter(isFinite);
+        return tots.length ? `R$ ${App.brl(Math.round(tots.reduce((a, b) => a + b, 0) * 100) / 100)}` : "";
+      } catch { return ""; }
+    };
     pnl.innerHTML = `<h2>Meus processos</h2>${snap.empty ? `<p class="hint">Nenhum processo salvo ainda. Preencha o formulário e clique em Salvar processo.</p>` : `<ul class="proclist">${snap.docs.map(d => {
-      const p = d.data(), quando = p.atualizadoEm ? p.atualizadoEm.toDate().toLocaleString("pt-BR") : "";
+      const p = d.data(), quando = p.atualizadoEm ? p.atualizadoEm.toDate().toLocaleString("pt-BR") : "", v = valor(p);
       return `<li><div><b>${esc(p.titulo || "Sem objeto")}</b><small>${esc(MOD[p.modalidade] || "")} · ${esc(p.nup || "sem NUP")} · ${esc(quando)}</small>${p.nome && p.objeto ? `<small>${esc(p.objeto)}</small>` : ""}</div>
+        <div class="procvalor"><small>Valor estimado</small>${v ? `<b>${v}</b>` : `<small>sem itens</small>`}</div>
         <div class="procact"><button type="button" data-abrir="${d.id}">Abrir</button><button type="button" class="link" data-excluir="${d.id}">Excluir</button></div></li>`;
     }).join("")}</ul>`}<button type="button" class="link" id="btnFecharLista">Fechar</button>`;
   }
