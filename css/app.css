@@ -133,6 +133,12 @@ body{margin:0}
 .proclist li div:first-child{min-width:0;display:flex;flex-direction:column}
 .proclist small{color:var(--muted)}
 .procact{display:flex;gap:4px;flex:none}
+.proclist li[hidden]{display:none}
+.prochead{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.prochead h2{margin:0}
+#pnlProcessos.minimizado .procbody{display:none}
+#buscaProc{width:100%;margin:12px 0 4px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;font:inherit;background:var(--surface);color:var(--ink)}
+#buscaProc:focus{outline:2px solid var(--sky);border-color:var(--accent)}
 .procvalor{margin-left:auto;flex:none;display:flex;flex-direction:column;text-align:right;white-space:nowrap}
 .procvalor b{color:var(--navy);font-size:15px}
 .upload{position:relative;display:inline-flex;align-items:center;cursor:pointer;background:var(--accent);color:var(--accent-ink);border-radius:6px;padding:7px 12px;font-weight:600}
