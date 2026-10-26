@@ -180,7 +180,7 @@ if (!cfg || !cfg.apiKey) {
       ? `<p class="hint">Entre com Google (no alto da página) para anexar documentos.</p>`
       : !driveOk()
         ? `<button type="button" id="btnDrive">Conectar ao Google Drive</button> <span class="hint">pedido uma vez por sessão</span>`
-        : `<label class="upload"><input type="file" id="anexoArquivos" multiple> <span>Anexar documentos</span></label>`;
+        : `<label class="upload"><input type="file" id="anexoArquivos" multiple> <span>Anexar documentos</span></label> <span class="hint">ou arraste os arquivos para esta área</span>`;
     $("#anexosLista").innerHTML = lista.map(a => `<li><div><a href="${esc(a.link || "#")}" target="_blank" rel="noopener"><b>${esc(a.nome)}</b></a><small>${tamanho(a.tamanho || 0)} · ${new Date(a.data).toLocaleDateString("pt-BR")}</small></div>
       ${user ? `<div class="procact"><button type="button" class="link" data-remover="${esc(a.id)}">Remover</button></div>` : ""}</li>`).join("");
   }
@@ -201,6 +201,35 @@ if (!cfg || !cfg.apiKey) {
     if (e.target.id !== "anexoArquivos" || !e.target.files.length) return;
     const files = [...e.target.files];
     e.target.value = "";
+    try { await anexar(files); } catch (err) { status("Não foi possível anexar: " + (err.code || err.message)); }
+  });
+
+  // Arrastar e soltar: o painel inteiro recebe os arquivos, como se fossem escolhidos no botão.
+  const pnlAnexos = $("#pnlAnexos");
+  let arrastando = 0;
+  const temArquivos = e => [...(e.dataTransfer?.types || [])].includes("Files");
+  pnlAnexos.addEventListener("dragenter", e => {
+    if (!temArquivos(e)) return;
+    e.preventDefault();
+    if (++arrastando === 1) pnlAnexos.classList.add("soltar");
+  });
+  pnlAnexos.addEventListener("dragover", e => {
+    if (!temArquivos(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = user && driveOk() ? "copy" : "none";
+  });
+  pnlAnexos.addEventListener("dragleave", () => {
+    if (arrastando && --arrastando === 0) pnlAnexos.classList.remove("soltar");
+  });
+  pnlAnexos.addEventListener("drop", async e => {
+    if (!temArquivos(e)) return;
+    e.preventDefault();
+    arrastando = 0;
+    pnlAnexos.classList.remove("soltar");
+    const files = [...e.dataTransfer.files];
+    if (!files.length) return;
+    if (!user) return status("Entre com Google antes de anexar documentos.");
+    if (!driveOk()) return status("Clique em Conectar ao Google Drive antes de anexar.");
     try { await anexar(files); } catch (err) { status("Não foi possível anexar: " + (err.code || err.message)); }
   });
 
