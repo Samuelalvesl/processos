@@ -1,7 +1,8 @@
 // Login com Google e processos salvos no Firestore (plano gratuito Spark).
 // Estrutura: usuarios/{uid} guarda os dados do órgão; usuarios/{uid}/processos/{id} guarda cada processo.
+// Os documentos anexados vão para o Google Drive do próprio usuário (escopo drive.file: o site só enxerga o que ele mesmo criou).
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, reauthenticateWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const $ = s => document.querySelector(s);
@@ -89,6 +90,120 @@ if (!cfg || !cfg.apiKey) {
     status("Processo aberto.");
   }
 
+  /* ---------- documentos do processo no Google Drive ---------- */
+  const DRIVE = "https://www.googleapis.com/drive/v3/files";
+  const PASTA_RAIZ = "Gerador de Contratações";
+  let driveToken = null, driveExp = 0, anexosDesenhados = "";
+  const driveOk = () => driveToken && Date.now() < driveExp;
+
+  // O token do Drive não sobrevive a recarregar a página: pede-se de novo, num popup, a cada sessão.
+  async function conectarDrive() {
+    const p = new GoogleAuthProvider();
+    p.addScope("https://www.googleapis.com/auth/drive.file");
+    const cred = GoogleAuthProvider.credentialFromResult(await reauthenticateWithPopup(user, p));
+    driveToken = cred.accessToken;
+    driveExp = Date.now() + 55 * 60 * 1000;
+    desenharAnexos(App.state());
+    status("Conectado ao Google Drive.");
+  }
+
+  async function api(url, opts = {}) {
+    const r = await fetch(url, { ...opts, headers: { Authorization: `Bearer ${driveToken}`, ...(opts.headers || {}) } });
+    if (r.status === 401) { driveToken = null; desenharAnexos(App.state()); throw new Error("a conexão com o Drive expirou. Clique em Conectar ao Google Drive."); }
+    if (!r.ok) throw new Error(`Drive ${r.status}: ${(await r.text()).slice(0, 200)}`);
+    return r.status === 204 ? null : r;
+  }
+  const json = async (url, opts) => (await api(url, opts)).json();
+
+  async function criarPasta(nome, pai) {
+    const meta = { name: nome, mimeType: "application/vnd.google-apps.folder", ...(pai ? { parents: [pai] } : {}) };
+    return (await json(`${DRIVE}?fields=id`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(meta) })).id;
+  }
+
+  // Uma pasta por processo, dentro de "Gerador de Contratações". Recria se tiver ido para a lixeira.
+  async function pastaDoProcesso(S) {
+    if (S.driveFolderId) {
+      try { const f = await json(`${DRIVE}/${S.driveFolderId}?fields=trashed`); if (!f.trashed) return S.driveFolderId; } catch (e) { if (!/Drive 404/.test(e.message)) throw e; }
+    }
+    const q = `name='${PASTA_RAIZ}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+    const achou = await json(`${DRIVE}?q=${encodeURIComponent(q)}&fields=files(id)`);
+    const raiz = achou.files.length ? achou.files[0].id : await criarPasta(PASTA_RAIZ);
+    const nome = `${S.nup || "Sem NUP"} - ${(S.objeto || "sem objeto").slice(0, 60)}`.replace(/[\\/]/g, "-");
+    S.driveFolderId = await criarPasta(nome, raiz);
+    return S.driveFolderId;
+  }
+
+  // Envio "resumable": uma requisição abre a sessão e outra manda o arquivo inteiro.
+  async function enviarArquivo(file, pasta) {
+    const ini = await api("https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&fields=id,name,webViewLink,size", {
+      method: "POST",
+      headers: { "Content-Type": "application/json; charset=UTF-8", "X-Upload-Content-Type": file.type || "application/octet-stream" },
+      body: JSON.stringify({ name: file.name, parents: [pasta] })
+    });
+    const r = await fetch(ini.headers.get("Location"), { method: "PUT", body: file });
+    if (!r.ok) throw new Error(`Drive ${r.status} ao enviar ${file.name}`);
+    return r.json();
+  }
+
+  async function anexar(files) {
+    const S = App.state();
+    if (!S.objeto && !S.nup) return status("Preencha o objeto ou o NUP antes de anexar: eles dão nome à pasta do processo no Drive.");
+    const pasta = await pastaDoProcesso(S);
+    for (const [i, f] of [...files].entries()) {
+      status(`Enviando ${i + 1} de ${files.length}: ${f.name}…`);
+      const d = await enviarArquivo(f, pasta);
+      S.anexos = [...(S.anexos || []), { id: d.id, nome: d.name, link: d.webViewLink, tamanho: +d.size || f.size, data: new Date().toISOString() }];
+      desenharAnexos(S);
+    }
+    await salvar(false); // grava a lista de anexos junto com o processo
+    status(`${files.length === 1 ? "Documento anexado" : files.length + " documentos anexados"} e processo salvo.`);
+  }
+
+  // Remover manda o arquivo para a lixeira do Drive (dá para recuperar por 30 dias).
+  async function removerAnexo(id) {
+    const S = App.state();
+    try { await api(`${DRIVE}/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) }); }
+    catch (e) { if (!/Drive 404/.test(e.message)) throw e; }
+    S.anexos = (S.anexos || []).filter(a => a.id !== id);
+    desenharAnexos(S);
+    await salvar(false);
+    status("Documento removido do processo e enviado para a lixeira do Drive.");
+  }
+
+  const tamanho = b => b >= 1048576 ? `${(b / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(b / 1024))} KB`;
+  function desenharAnexos(S) {
+    const lista = S.anexos || [];
+    const chave = JSON.stringify([lista, !!user, driveOk()]);
+    if (chave === anexosDesenhados) return;
+    anexosDesenhados = chave;
+    $("#anexosAcoes").innerHTML = !user
+      ? `<p class="hint">Entre com Google (no alto da página) para anexar documentos.</p>`
+      : !driveOk()
+        ? `<button type="button" id="btnDrive">Conectar ao Google Drive</button> <span class="hint">pedido uma vez por sessão</span>`
+        : `<label class="upload"><input type="file" id="anexoArquivos" multiple> <span>Anexar documentos</span></label>`;
+    $("#anexosLista").innerHTML = lista.map(a => `<li><div><a href="${esc(a.link || "#")}" target="_blank" rel="noopener"><b>${esc(a.nome)}</b></a><small>${tamanho(a.tamanho || 0)} · ${new Date(a.data).toLocaleDateString("pt-BR")}</small></div>
+      ${user ? `<div class="procact"><button type="button" class="link" data-remover="${esc(a.id)}">Remover</button></div>` : ""}</li>`).join("");
+  }
+  App.listeners.push(desenharAnexos);
+
+  $("#pnlAnexos").addEventListener("click", async e => {
+    const t = e.target;
+    try {
+      if (t.id === "btnDrive") await conectarDrive();
+      if (t.dataset.remover) {
+        if (!driveOk()) return status("Clique em Conectar ao Google Drive antes de remover.");
+        if (t.dataset.confirmar) await removerAnexo(t.dataset.remover);
+        else { t.dataset.confirmar = "1"; t.textContent = "Confirmar remoção"; }
+      }
+    } catch (err) { status("Não foi possível concluir: " + (err.code || err.message)); }
+  });
+  $("#pnlAnexos").addEventListener("change", async e => {
+    if (e.target.id !== "anexoArquivos" || !e.target.files.length) return;
+    const files = [...e.target.files];
+    e.target.value = "";
+    try { await anexar(files); } catch (err) { status("Não foi possível anexar: " + (err.code || err.message)); }
+  });
+
   // Os dados do órgão acompanham o usuário: carregam no login e são salvos quando mudam.
   async function carregarOrg() {
     const d = await getDoc(userDoc());
@@ -110,7 +225,7 @@ if (!cfg || !cfg.apiKey) {
     const id = e.target.id;
     try {
       if (id === "btnEntrar") await signInWithPopup(auth, new GoogleAuthProvider());
-      if (id === "btnSair") { await signOut(auth); $("#pnlProcessos").hidden = true; }
+      if (id === "btnSair") { await signOut(auth); driveToken = null; $("#pnlProcessos").hidden = true; }
       if (id === "btnNovo") { App.novo(); $("#pnlProcessos").hidden = true; }
       if (id === "btnSalvarNuvem") await salvar(false);
       if (id === "btnSalvarCopia") await salvar(true);
@@ -133,6 +248,7 @@ if (!cfg || !cfg.apiKey) {
   onAuthStateChanged(auth, async u => {
     user = u;
     desenharBarra();
+    desenharAnexos(App.state());
     if (u) { try { await carregarOrg(); } catch (e) { status("Não foi possível carregar os dados do órgão: " + (e.code || e.message)); } }
   });
   desenharBarra();
