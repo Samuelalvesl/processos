@@ -22,7 +22,7 @@ const BLANK = {
   nomeProcesso: "", nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "", pcaNaoConsta: false, pcaJustificativa: "",
   itens: [{ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }],
   prazoEntrega: 5, fornecimento: "integral", perecivel: false, validadeMeses: 12, requisitos: "",
-  fornecedores: [], cloudId: null,
+  fornecedores: [], cloudId: null, anexos: [], driveFolderId: null,
   example: false
 };
 
