@@ -57,12 +57,39 @@ if (!cfg || !cfg.apiKey) {
         return tots.length ? `R$ ${App.brl(Math.round(tots.reduce((a, b) => a + b, 0) * 100) / 100)}` : "";
       } catch { return ""; }
     };
-    pnl.innerHTML = `<h2>Meus processos</h2>${snap.empty ? `<p class="hint">Nenhum processo salvo ainda. Preencha o formulário e clique em Salvar processo.</p>` : `<ul class="proclist">${snap.docs.map(d => {
+    const busca = $("#buscaProc")?.value || "";
+    pnl.innerHTML = `<div class="prochead"><h2>Meus processos</h2><button type="button" class="link" id="btnMinLista"></button></div>
+      <div class="procbody">${snap.empty ? `<p class="hint">Nenhum processo salvo ainda. Preencha o formulário e clique em Salvar processo.</p>` : `<input type="search" id="buscaProc" placeholder="Buscar por nome, objeto, NUP ou modalidade" aria-label="Buscar processos">
+      <p class="hint" id="buscaVazia" hidden>Nenhum processo encontrado.</p><ul class="proclist">${snap.docs.map(d => {
       const p = d.data(), quando = p.atualizadoEm ? p.atualizadoEm.toDate().toLocaleString("pt-BR") : "", v = valor(p);
-      return `<li><div><b>${esc(p.titulo || "Sem objeto")}</b><small>${esc(MOD[p.modalidade] || "")} · ${esc(p.nup || "sem NUP")} · ${esc(quando)}</small>${p.nome && p.objeto ? `<small>${esc(p.objeto)}</small>` : ""}</div>
+      const chave = semAcento([p.titulo, p.nome, p.objeto, p.nup, MOD[p.modalidade], quando, v].join(" "));
+      return `<li data-busca="${esc(chave)}"><div><b>${esc(p.titulo || "Sem objeto")}</b><small>${esc(MOD[p.modalidade] || "")} · ${esc(p.nup || "sem NUP")} · ${esc(quando)}</small>${p.nome && p.objeto ? `<small>${esc(p.objeto)}</small>` : ""}</div>
         <div class="procvalor"><small>Valor estimado</small>${v ? `<b>${v}</b>` : `<small>sem itens</small>`}</div>
         <div class="procact"><button type="button" data-abrir="${d.id}">Abrir</button><button type="button" class="link" data-excluir="${d.id}">Excluir</button></div></li>`;
-    }).join("")}</ul>`}<button type="button" class="link" id="btnFecharLista">Fechar</button>`;
+    }).join("")}</ul>`}<button type="button" class="link" id="btnFecharLista">Fechar</button></div>`;
+    if ($("#buscaProc")) { $("#buscaProc").value = busca; filtrarLista(); }
+    minimizarLista(listaMinimizada);
+  }
+
+  // Minimizar deixa só o título da lista; a escolha vale até fechar o site.
+  let listaMinimizada = false;
+  function minimizarLista(min) {
+    listaMinimizada = min;
+    $("#pnlProcessos").classList.toggle("minimizado", min);
+    const b = $("#btnMinLista");
+    if (b) { b.textContent = min ? "Expandir" : "Minimizar"; b.setAttribute("aria-expanded", String(!min)); }
+  }
+
+  const semAcento = s => String(s || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  function filtrarLista() {
+    const termos = semAcento($("#buscaProc").value).split(/\s+/).filter(Boolean);
+    let achados = 0;
+    for (const li of $("#pnlProcessos").querySelectorAll(".proclist li")) {
+      const ok = termos.every(t => li.dataset.busca.includes(t));
+      li.hidden = !ok;
+      achados += ok;
+    }
+    $("#buscaVazia").hidden = achados > 0;
   }
 
   // Sem nome, o primeiro clique leva ao campo "Nome do processo"; o segundo salva assim mesmo (o objeto vira o título).
@@ -273,6 +300,7 @@ if (!cfg || !cfg.apiKey) {
     const t = e.target;
     try {
       if (t.id === "btnFecharLista") $("#pnlProcessos").hidden = true;
+      if (t.id === "btnMinLista") minimizarLista(!listaMinimizada);
       if (t.dataset.abrir) await abrir(t.dataset.abrir);
       if (t.dataset.excluir) {
         // Exclusão em dois cliques, sem diálogo do navegador.
@@ -281,6 +309,7 @@ if (!cfg || !cfg.apiKey) {
       }
     } catch (err) { status("Não foi possível concluir: " + (err.code || err.message)); }
   });
+  $("#pnlProcessos").addEventListener("input", e => { if (e.target.id === "buscaProc") filtrarLista(); });
 
   onAuthStateChanged(auth, async u => {
     user = u;
