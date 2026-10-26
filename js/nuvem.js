@@ -38,7 +38,7 @@ if (!cfg || !cfg.apiKey) {
   function mostrarAtual(S) {
     const el = $("#procAtual");
     if (!el) return;
-    el.textContent = S.cloudId ? `Editando processo salvo: ${(S.objeto || "sem objeto").slice(0, 60)}` : "Processo novo, ainda não salvo";
+    el.textContent = S.cloudId ? `Editando processo salvo: ${(S.nomeProcesso || S.objeto || "sem objeto").slice(0, 60)}` : "Processo novo, ainda não salvo";
     $("#btnSalvarCopia").hidden = !S.cloudId;
   }
   App.listeners.push(mostrarAtual);
@@ -51,18 +51,29 @@ if (!cfg || !cfg.apiKey) {
     const MOD = { dispensa: "Dispensa", pregao: "Pregão", adesao: "Adesão" };
     pnl.innerHTML = `<h2>Meus processos</h2>${snap.empty ? `<p class="hint">Nenhum processo salvo ainda. Preencha o formulário e clique em Salvar processo.</p>` : `<ul class="proclist">${snap.docs.map(d => {
       const p = d.data(), quando = p.atualizadoEm ? p.atualizadoEm.toDate().toLocaleString("pt-BR") : "";
-      return `<li><div><b>${esc(p.titulo || "Sem objeto")}</b><small>${esc(MOD[p.modalidade] || "")} · ${esc(p.nup || "sem NUP")} · ${esc(quando)}</small></div>
+      return `<li><div><b>${esc(p.titulo || "Sem objeto")}</b><small>${esc(MOD[p.modalidade] || "")} · ${esc(p.nup || "sem NUP")} · ${esc(quando)}</small>${p.nome && p.objeto ? `<small>${esc(p.objeto)}</small>` : ""}</div>
         <div class="procact"><button type="button" data-abrir="${d.id}">Abrir</button><button type="button" class="link" data-excluir="${d.id}">Excluir</button></div></li>`;
     }).join("")}</ul>`}<button type="button" class="link" id="btnFecharLista">Fechar</button>`;
   }
 
+  // Sem nome, o primeiro clique leva ao campo "Nome do processo"; o segundo salva assim mesmo (o objeto vira o título).
+  let pediuNome = false;
   async function salvar(comoNovo) {
     const S = App.getState();
+    const nome = (S.nomeProcesso || "").trim();
+    if (!nome && !pediuNome) {
+      pediuNome = true;
+      const campo = $("#nomeProcesso");
+      campo.scrollIntoView({ behavior: "smooth", block: "center" });
+      campo.focus();
+      return status("Dê um nome ao processo para encontrá-lo depois e clique em Salvar de novo. Sem nome, o objeto será usado como título.");
+    }
+    pediuNome = false;
     const { org, ...estado } = S;
     const ref = estado.cloudId && !comoNovo ? doc(procCol(), estado.cloudId) : doc(procCol());
     estado.cloudId = ref.id;
     await setDoc(ref, {
-      titulo: (S.objeto || "").slice(0, 140), modalidade: S.mod, nup: S.nup || "",
+      titulo: (nome || S.objeto || "").slice(0, 140), nome, objeto: (S.objeto || "").slice(0, 140), modalidade: S.mod, nup: S.nup || "",
       estado: JSON.stringify(estado), atualizadoEm: serverTimestamp()
     });
     App.state().cloudId = ref.id;

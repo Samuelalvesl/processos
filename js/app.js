@@ -19,7 +19,7 @@ const BLANK = {
   mod: "dispensa", srp: false, srpHipotese: "I", adesaoPermitida: false, adjudicacao: "item", justGrupo: "", sigiloso: false,
   vigenciaMeses: 12, vigenciaDias: 90,
   ata: "", pregaoOrigem: "", gerenciador: "", uasg: "", fornecedor: "", cnpj: "", ataValidade: "", ataProrrogada: false, aditivoNum: "", ataNovaValidade: "", vigenciaAdesao: "", vantagem: "prazo", ataFederal: false, habReduzida: true,
-  nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "", pcaNaoConsta: false, pcaJustificativa: "",
+  nomeProcesso: "", nup: "", prioridade: "Médio", dataPretendida: "", objeto: "", motivo: "", necessidade: "", baseQtd: "", pca: "", pcaNaoConsta: false, pcaJustificativa: "",
   itens: [{ itemAta: "", desc: "", catmat: "", un: "", qtd: "", vu: "", qreg: "" }],
   prazoEntrega: 5, fornecimento: "integral", perecivel: false, validadeMeses: 12, requisitos: "",
   fornecedores: [], cloudId: null,
@@ -368,8 +368,8 @@ function buildTR(calc, M) {
     N.it(2, "Impedimento de licitar e contratar, quando praticadas as condutas descritas nas alíneas \"b\", \"c\" e \"d\" do subitem acima, sempre que não se justificar a imposição de penalidade mais grave (art. 156, § 4º);"),
     N.it(2, "Declaração de inidoneidade para licitar e contratar, quando praticadas as condutas descritas nas alíneas \"e\", \"f\", \"g\" e \"h\" do subitem acima, bem como nas alíneas \"b\", \"c\" e \"d\", que justifiquem a imposição de penalidade mais grave (art. 156, § 5º);"),
     N.it(2, "Multa:"),
-    N.it(3, "moratória de [PREENCHER: 0,5%] por dia de atraso injustificado sobre o valor da parcela inadimplida, até o limite de [PREENCHER: 30] dias;"),
-    N.it(3, "compensatória de [PREENCHER: entre 0,5% e 30%, art. 156, § 3º] sobre o valor total do contrato, no caso de inexecução total do objeto;"),
+    N.it(3, "moratória de 0,5% (cinco décimos por cento) por dia de atraso injustificado sobre o valor da parcela inadimplida, até o limite de 30 (trinta) dias;"),
+    N.it(3, "compensatória de 0,5% (cinco décimos por cento) sobre o valor total do contrato, no caso de inexecução total do objeto;"),
     N.it(3, "o atraso superior ao limite do subitem 7.2.4.1 caracterizará inexecução total do objeto, autorizando a Administração a promover a extinção do contrato (art. 137, I, da Lei nº 14.133, de 2021)."),
     N.it(1, "A aplicação das sanções previstas neste Termo de Referência não exclui, em hipótese alguma, a obrigação de reparação integral do dano causado ao Contratante."),
     N.it(1, "Todas as sanções previstas neste Termo de Referência poderão ser aplicadas cumulativamente com a multa."),
@@ -648,7 +648,9 @@ async function saveFile(filename, blob) {
   setTimeout(() => URL.revokeObjectURL(url), 4000);
   setStatus(`${filename} gerado.`);
 }
-const slug = () => (S.objeto || "contratacao").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^(aquisicao|contratacao)\s+de\s+/i, "").split(/\s+/).slice(0, 5).join("_").replace(/[^\w]/g, "").slice(0, 48) || "contratacao";
+// O nome do processo, quando informado, vira o nome dos arquivos baixados.
+const slugNome = () => (S.nomeProcesso || "").trim().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[\s\/\\]+/g, "_").replace(/[^\w.-]/g, "").replace(/_+/g, "_").replace(/^_|_$/g, "").slice(0, 60);
+const slug = () => slugNome() || (S.objeto || "contratacao").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/^(aquisicao|contratacao)\s+de\s+/i, "").split(/\s+/).slice(0, 5).join("_").replace(/[^\w]/g, "").slice(0, 48) || "contratacao";
 const MODNOME = { dispensa: "Dispensa", pregao: "Pregao", adesao: "Adesao" };
 
 /* ---------- estado, formulário e ciclo de render ---------- */
